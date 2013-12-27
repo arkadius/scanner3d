@@ -1,3 +1,9 @@
+Run
+===
+
+Run "gradle" or the gradle wrapper. This will build the sample main, assemble a jar and run it. 
+
+
 Update to newest SDK version
 ============================
 
