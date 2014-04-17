@@ -3,29 +3,39 @@ defaultTasks 'build', 'runJar'
 version = 0.1
 
 apply plugin: 'java'
+apply plugin: 'scala'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
+apply plugin: 'idea-scala'
 
 apply plugin: 'application'
-mainClassName = 'mygame.Main'
+mainClassName = 'scanner3d.Main'
+
+buildscript { // idea-scala
+  repositories{
+    maven{
+      url "https://raw.github.com/rodionmoiseev/maven-repo/master/repo/releases"
+    }
+  }
+  dependencies {
+    classpath group: 'org.rodion.gradle', name: 'idea-scala-plugin', version: '0.2'
+  }
+}
 
 repositories {
     mavenCentral()
 }
 
-sourceSets {
-    main {
-        java {
-            srcDir 'src'
-        }
-        resources {
-            srcDir 'src/resources'
-        }
-    }
-}
-
 dependencies {
   compile fileTree(dir: 'libs', include: '*.jar')
+
+  //Dependencies for the 'scala-library-2.9.1' module library
+  scalaApi 'org.scala-lang:scala-library:2.10.4'
+
+  //Dependencies for the 'scala-compiler-2.10.r' project library
+  //as well as for gradle's scala compilation tasks
+  scalaTools 'org.scala-lang:scala-library:2.10.4'
+  scalaTools 'org.scala-lang:scala-compiler:2.10.4'
 }
 
 //Generate self-distributing Gradle wrapper - BTW, simple task definition
