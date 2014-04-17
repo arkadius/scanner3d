@@ -20,20 +20,19 @@ object MeshGenerator {
     val filtered = depthPixels.filter(_ > 0)
     val sum = filtered.foldLeft(0L) { _ + _ }
     val mean = sum.asInstanceOf[Float] / filtered.size
-    val max  = filtered.max
+    val max  = 6000 // filtered.max // żeby się nie przesuwało - empirycznie sprawdzona wartość
     println(s"mean: $mean, max: $max")
-    val constMap = Math.max(max, 6000) // empirycznie sprawdzone
 
     val vertices = for {
       y <- Range(0, height)
       x <- Range(0, width)
       z = depthPixels((height-1-y)*width + (width-1-x))
-      zPrim = if (z > 0) z else mean
+      zPrim = Math.min(if (z > 0) z else mean, max)
     } yield new Vector3f(
       x.asInstanceOf[Float] / (width-1) * WIDTH - WIDTH/2,
       y.asInstanceOf[Float] / (height-1) * HEIGHT - HEIGHT/2,
 //      Math.sin(x.asInstanceOf[Float] / (width-1) * Math.PI).asInstanceOf[Float] // walec
-      (1- zPrim/constMap) * DEPTH
+      (1- zPrim/max) * DEPTH
     )
 
 //    for {
