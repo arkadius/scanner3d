@@ -14,37 +14,35 @@ object MeshGenerator {
   val HEIGHT = 3f
   val DEPTH  = 3f
 
-  def generate(depthPixels: Seq[Short], width: Int, height: Int): Mesh = {
+  private var cachedXYOpt       = Option.empty[IndexedSeq[(Int, Int)]]
+  private var cachedIndexesOpt  = Option.empty[IndexedSeq[Int]]
+  private var cachedTexturesOpt = Option.empty[IndexedSeq[Vector2f]]
+
+  def generate(depthPixelsIter: Iterable[Short], width: Int, height: Int): Mesh = {
     val mesh = new Mesh()
 
+    val depthPixels = depthPixelsIter.toIndexedSeq
     val filtered = depthPixels.filter(_ > 0)
     val sum = filtered.foldLeft(0L) { _ + _ }
     val mean = sum.asInstanceOf[Float] / filtered.size
     val max  = 6000 // filtered.max // żeby się nie przesuwało - empirycznie sprawdzona wartość
     println(s"mean: $mean, max: $max")
 
-    val vertices = for {
+    cachedXYOpt = Some(cachedXYOpt.getOrElse(for {
       y <- Range(0, height)
       x <- Range(0, width)
-      z = depthPixels((height-1-y)*width + (width-1-x))
+    } yield (x, y)))
+    val cachedXY = cachedXYOpt.get
+
+    val vertices = for {
+      ((x, y), z) <- cachedXY zip depthPixels
       zPrim = Math.min(if (z > 0) z else mean, max)
     } yield new Vector3f(
-      x.asInstanceOf[Float] / (width-1) * WIDTH - WIDTH/2,
-      y.asInstanceOf[Float] / (height-1) * HEIGHT - HEIGHT/2,
+      (1 - x.asInstanceOf[Float] / (width-1)) * WIDTH - WIDTH/2,
+      (1 - y.asInstanceOf[Float] / (height-1)) * HEIGHT - HEIGHT/2,
 //      Math.sin(x.asInstanceOf[Float] / (width-1) * Math.PI).asInstanceOf[Float] // walec
-      (1- zPrim/max) * DEPTH
+      (1 - zPrim/max) * DEPTH
     )
-
-//    for {
-//      y <- Range(0, height)
-//    } {
-//      for {
-//        x <- Range(0, width)
-//      } {
-//        printf("%4d ", depthPixels(y * width + x))
-//      }
-//      println()
-//    }
 
     def vertex(x: Int, y: Int) = vertices(y*width + x)
 
@@ -70,30 +68,28 @@ object MeshGenerator {
     }
 
     val normals = for {
-      y <- Range(0, height)
-      x <- Range(0, width)
+      (x, y) <- cachedXY
       n = normal(x, y)
       i <- Seq(n.x, n.y, n.z)
     } yield i
 
-    val indexes = for {
+    cachedIndexesOpt = Some(cachedIndexesOpt.getOrElse(for {
       y <- Range(0, height-1)
       x <- Range(0, width-1)
       i <- Seq(width, 0, 1, 1, width+1, width)
-    } yield y*width + x + i
+    } yield y*width + x + i))
 
-    val textures = for {
-      y <- Range(0, height)
-      x <- Range(0, width)
+    cachedTexturesOpt = Some(cachedTexturesOpt.getOrElse(for {
+      (x, y) <- cachedXY
     } yield new Vector2f(
       x.asInstanceOf[Float] / (width-1),
       y.asInstanceOf[Float] / (height-1)
-    )
+    )))
 
     mesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(vertices : _*))
     mesh.setBuffer(Type.Normal,   3, BufferUtils.createFloatBuffer(normals: _*))
-    mesh.setBuffer(Type.Index,    3, BufferUtils.createIntBuffer(indexes : _*))
-    mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(textures: _*))
+    mesh.setBuffer(Type.Index,    3, BufferUtils.createIntBuffer(cachedIndexesOpt.get : _*))
+    mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(cachedTexturesOpt.get : _*))
     mesh.updateBound()
 
     mesh
